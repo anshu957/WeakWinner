@@ -1,73 +1,106 @@
-#pragma once
+
+// The MIT License (MIT)
+
+// Copyright (c) 2018 Anshul
+
+//  Permission is hereby granted, free of charge, to any person obtaining a
+//  copy of this software and associated documentation files (the "Software"),
+//  to deal in the Software without restriction, including without limitation
+//  the rights to use, copy, modify, merge, publish, distribute, sublicense,
+//  and/or sell copies of the Software, and to permit persons to whom the
+//  Software is furnished to do so, subject to the following conditions:
+//
+//  The above copyright notice and this permission notice shall be included in
+//  all copies or substantial portions of the Software.
+//
+//  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+//  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+//  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+//  DEALINGS IN THE SOFTWARE.
+
+/* code */
+
 #include <Interface.h>
-
-void ReadDataFile(std::string &file, std::vector<std::vector<double>> &ts)
-{
-    // Reading data from the file...
-    // Knowledge of rows or columns is not required...Just the name of local file is required
-    std::fstream in_1(file.c_str(), std::fstream::in);
-    int count = 0;
-    if (in_1.good())
-    {
-        std::string line;
-        while (getline(in_1, line))
-        {
-            std::vector<double> rowVector;
-            std::istringstream row(line);
-            std::string value;
-            while (getline(row, value, ','))
-                rowVector.push_back(stod(value));
-
-            ts.push_back(rowVector);
-        }
-        count++;
-    }
-    in_1.close();
-}
-
-void AdjacencyToEdgeList(const std::vector<std::vector<double>> &ts, std::vector<std::vector<double>> &edgelist)
-{
-    for (size_t i = 0; i < ts.size(); i++)
-    {
-        std::vector<double> row;
-        row.push_back(i);
-        for (size_t j = 0; j < ts[0].size(); j++)
-        {
-            if (ts[i][j])
-                row.push_back(j);
-        }
-        edgelist.push_back(row);
-    }
-}
-
-/*
+#include <Dynamics.h>
+#include <Folder.h>
+#include <random>
+#include <fstream>
 
 int main(int argc, char *argv[])
 {
-    vector<vector<double>> ts;
-    string fn = "Adj.dat";
-    ReadDataFile(fn, ts);
-    cout << "\n Shape of Adj matrix is : ( " << ts.size() << ", " << ts[0].size() << " )" << endl;
-    cout << endl;
-    for (auto i : ts)
+    // ++++++++++++++++ Start of [setting up RNG] ++++++++++++++++++++++++++++
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<real_t> dis(-2, 2);
+
+    // +++++++++++++++++++ End of [setting up RNG] ++++++++++++++++++++++++++++
+
+    // ++++++++++++++++  Start of [Folder management ]++++++++++++++++++++++++++++
+
+    // Folder name for collecting all the data with current date as the subfolder
+    Folder f("data");
+    // filename to be written with correct folder path
+    std::string fout_1 = f.m_path + FN_OUT_1;
+    std::ofstream out_1(fout_1.c_str(), std::ios_base::out);
+
+    // ++++++++++++++++++++ End of [Folder management ]++++++++++++++++++++++++++++
+
+    // ++++++++++++++++  Start of [setting up the problem] ++++++++++++++++++++++++++++
+
+    // Creating a network object
+    Network net1(FN_IN_NETWORK);
+
+    // Initialize the state of the system
+    state_type x;
+    for (size_t i = 0; i < net1.m_networkSize * DIM_OSC; i++)
+        x[i] = dis(gen);
+
+    DynamicalSystem sys1(net1, FN_IN_COUPLING, FN_IN_PARAM);
+
+    // +++++++++++++++++++  End of [setting up the problem] ++++++++++++++++++++++++++++
+
+    // @@@@@@@@@@@@@@@@  Start of [ INTEGRATING the system] @@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+    size_t steps1 = integrate_adaptive(make_dense_output(1.0e-06, 1.0e-06, runge_kutta_dopri5<state_type>()), sys1, x, 0.0, T_TRANS, 0.01);
+
+    for (size_t i = 0; i < x.size(); i++)
+        assert(isfinite(x[i]));
+
+    // time vector to sample data at specific points -- for observer
+    std::vector<real_t> times_it;
+    times_it.reserve(size_t(T_RUN));
+    for (size_t i = 0; i < size_t(T_RUN); i++)
+        times_it.push_back(1.0 * i);
+
+    std::vector<state_type> x_vec;
+    std::vector<real_t> times;
+    size_t steps2 = integrate_times(make_dense_output(1.0e-06, 1.0e-06, runge_kutta_dopri5<state_type>()), sys1, x,
+                                    times_it.begin(), times_it.end(), 0.01, push_back_state_and_time(x_vec, times));
+    // @@@@@@@@@@@@@@@@  End of [ INTEGRATING the system] @@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+    // @@@@@@@@@@@@@@@@  Start of [ generating SECONDARY DATA ] @@@@@@@@@@@@@@@@@@@@@@@@@
+
+    // calculating phases and unwrapping them
+    arr2d phases(times.size(), net1.m_networkSize);
+    arr2d unwrapped_phases(times.size(), net1.m_networkSize);
+
+    calphase(x_vec, times, phases);
+    unwrap_phase(phases, unwrapped_phases);
+
+    std::vector<std::pair<real_t, real_t>> phasediff_stats;
+    phasediff_stats.reserve(net1.m_networkSize);
+    ph_msd(unwrapped_phases, phasediff_stats);
+
+    for (size_t i = 0; i < net1.m_networkSize; i++)
     {
-        for (auto j : i)
-            cout << j << "\t";
-        cout << endl;
+        out_1 << phasediff_stats[i].first << "\t" << phasediff_stats[i].second << "\t";
     }
 
-    vector<vector<double>> edgelist;
-    AdjacencyToEdgeList(ts, edgelist);
-    cout << endl
-         << endl;
-    cout << "Edge List : " << endl;
-    for (auto i : edgelist)
-    {
-        for (auto j : i)
-            cout << j << "\t";
-        cout << endl;
-    }
-
+    // @@@@@@@@@@@@@@@@  End of [ generating SECONDARY DATA ] @@@@@@@@@@@@@@@@@@@@@@@@@@@
+    out_1.close();
     return 0;
 }
-*/
