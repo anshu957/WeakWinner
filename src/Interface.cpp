@@ -54,53 +54,68 @@ int main(int argc, char *argv[])
     // Creating a network object
     Network net1(FN_IN_NETWORK);
 
-    // Initialize the state of the system
-    state_type x;
-    for (size_t i = 0; i < net1.m_networkSize * DIM_OSC; i++)
-        x[i] = dis(gen);
-
     DynamicalSystem sys1(net1, FN_IN_COUPLING, FN_IN_PARAM);
 
     // +++++++++++++++++++  End of [setting up the problem] ++++++++++++++++++++++++++++
 
     // @@@@@@@@@@@@@@@@  Start of [ INTEGRATING the system] @@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-    size_t steps1 = integrate_adaptive(make_dense_output(1.0e-06, 1.0e-06, runge_kutta_dopri5<state_type>()), sys1, x, 0.0, T_TRANS, 0.01);
-
-    for (size_t i = 0; i < x.size(); i++)
-        assert(isfinite(x[i]));
-
-    // time vector to sample data at specific points -- for observer
-    std::vector<real_t> times_it;
-    times_it.reserve(size_t(T_RUN));
-    for (size_t i = 0; i < size_t(T_RUN); i++)
-        times_it.push_back(1.0 * i);
-
-    std::vector<state_type> x_vec;
-    std::vector<real_t> times;
-    size_t steps2 = integrate_times(make_dense_output(1.0e-06, 1.0e-06, runge_kutta_dopri5<state_type>()), sys1, x,
-                                    times_it.begin(), times_it.end(), 0.01, push_back_state_and_time(x_vec, times));
-    // @@@@@@@@@@@@@@@@  End of [ INTEGRATING the system] @@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-    // @@@@@@@@@@@@@@@@  Start of [ generating SECONDARY DATA ] @@@@@@@@@@@@@@@@@@@@@@@@@
-
-    // calculating phases and unwrapping them
-    arr2d phases(times.size(), net1.m_networkSize);
-    arr2d unwrapped_phases(times.size(), net1.m_networkSize);
-
-    calphase(x_vec, times, phases);
-    unwrap_phase(phases, unwrapped_phases);
-
-    std::vector<std::pair<real_t, real_t>> phasediff_stats;
-    phasediff_stats.reserve(net1.m_networkSize);
-    ph_msd(unwrapped_phases, phasediff_stats);
-
-    for (size_t i = 0; i < net1.m_networkSize; i++)
+    for (real_t d1 = 0.0; d1 <= D_MAX; d1 += D_STEP)
     {
-        out_1 << phasediff_stats[i].first << "\t" << phasediff_stats[i].second << "\t";
+        for (real_t d2 = 0.0; d2 <= D_MAX; d2 += D_STEP)
+        {
+            sys1.m_coupling[0][1] = d1;
+            sys1.m_coupling[1][0] = d1;
+
+            sys1.m_coupling[2][1] = d2;
+            sys1.m_coupling[1][2] = d2;
+
+            // Initialize the state of the system
+            state_type x;
+            for (size_t i = 0; i < net1.m_networkSize * DIM_OSC; i++)
+                x[i] = dis(gen);
+
+            size_t steps1 = integrate_adaptive(make_dense_output(1.0e-06, 1.0e-06, runge_kutta_dopri5<state_type>()), sys1, x, 0.0, T_TRANS, 0.01);
+
+            for (size_t i = 0; i < x.size(); i++)
+                assert(isfinite(x[i]));
+
+            // time vector to sample data at specific points -- for observer
+            std::vector<real_t> times_it;
+            times_it.reserve(size_t(T_RUN));
+            for (size_t i = 0; i < size_t(T_RUN); i++)
+                times_it.push_back(1.0 * i);
+
+            std::vector<state_type> x_vec;
+            std::vector<real_t> times;
+            size_t steps2 = integrate_times(make_dense_output(1.0e-06, 1.0e-06, runge_kutta_dopri5<state_type>()), sys1, x,
+                                            times_it.begin(), times_it.end(), 0.01, push_back_state_and_time(x_vec, times));
+            // @@@@@@@@@@@@@  End of [ INTEGRATING the system] @@@@@@@@@@@@@@@@@@@@@@@@
+
+            // @@@@@@@@@@@@@  Start of [ generating SECONDARY DATA ] @@@@@@@@@@@@@@@@@@
+
+            // calculating phases and unwrapping them
+            arr2d phases(times.size(), net1.m_networkSize);
+            arr2d unwrapped_phases(times.size(), net1.m_networkSize);
+
+            calphase(x_vec, times, phases);
+            unwrap_phase(phases, unwrapped_phases);
+
+            std::vector<std::pair<real_t, real_t>> phasediff_stats;
+            phasediff_stats.reserve(net1.m_networkSize);
+            ph_msd(unwrapped_phases, phasediff_stats);
+
+            out_1 << d1 << "\t" << d2;
+            for (size_t i = 0; i < net1.m_networkSize; i++)
+            {
+                out_1 << "\t" << phasediff_stats[i].first << "\t" << phasediff_stats[i].second;
+            }
+            out_1 << "\n";
+
+            // @@@@@@@@@@@@@  End of [ generating SECONDARY DATA ] @@@@@@@@@@@@@@@@@@@@@
+        }
     }
 
-    // @@@@@@@@@@@@@@@@  End of [ generating SECONDARY DATA ] @@@@@@@@@@@@@@@@@@@@@@@@@@@
     out_1.close();
     return 0;
 }
