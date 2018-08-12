@@ -1,5 +1,6 @@
 #include <Dynamics.h>
 #include <iostream>
+#include <Combinations.h>
 
 void DynamicalSystem::operator()(const state_type &x, state_type &dxdt, const real_t /* t */)
 {
@@ -73,10 +74,23 @@ void ph_msd(const arr2d &unwrapped_phases, std::vector<std::pair<real_t, real_t>
 {
     // calcuates the mean and standard deviation of pair wise phase differences between
     // oscillators.
-    arr2d diff_phases(unwrapped_phases.rows(), unwrapped_phases.cols());
-    for (size_t i = 0; i < unwrapped_phases.cols(); i++)
+    size_t no_osc = unwrapped_phases.cols();
+
+    size_t no_combinations = size_t(0.5 * no_osc * (no_osc - 1));
+    std::vector<int> v1(no_osc);
+    std::iota(std::begin(v1), std::end(v1), 0); // fills the vector like 0,1,2,...
+    std::vector<std::vector<int>> v2;
+    v2.reserve(no_combinations);
+    Combination(v1, 2, v2);
+
+    arr2d diff_phases(unwrapped_phases.rows(), no_combinations);
+
+    size_t j, k;
+    for (size_t i = 0; i < v2.size(); i++)
     {
-        diff_phases.col(i) = unwrapped_phases.col(i) - unwrapped_phases.col((i + 1) % unwrapped_phases.cols());
+        j = v2[i][0];
+        k = v2[i][1];
+        diff_phases.col(i) = unwrapped_phases.col(j) - unwrapped_phases.col(k);
     }
 
     auto m1 = diff_phases.colwise().mean();

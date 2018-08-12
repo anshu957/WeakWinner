@@ -11,6 +11,7 @@ project(folder_generator_by_date)
 include_directories(include)
 include_directories(~/Downloads/boost_1_67_0/)
 include_directories(~/Downloads/eigen3/)
+include_directories(utils)
 
 # adding source files manualy
 #set(SOURCES src/Folder.cpp src/Network.cpp)
