@@ -1,2 +1,2 @@
-# coupled_oscillators
-A generic dynamical system problem
+## coupled_oscillators (a generic dynamical system problem)
+* requires boost and eigen libraries to build
