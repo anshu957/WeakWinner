@@ -27,10 +27,19 @@
 #include <Dynamics.h>
 #include <Folder.h>
 #include <random>
+#include <string>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 
 int main(int argc, char *argv[])
 {
+    // ++++++++++++++++ Start of [handling command line arguments] +++++++++++++++++
+    real_t d3 = std::stod(argv[1]);
+    std::stringstream ss_d3;
+    ss_d3 << d3;
+    // ++++++++++++++++ End of [handling command line arguments] +++++++++++++++++++
+
     // ++++++++++++++++ Start of [setting up RNG] ++++++++++++++++++++++++++++
 
     std::random_device rd;
@@ -44,7 +53,7 @@ int main(int argc, char *argv[])
     // Folder name for collecting all the data with current date as the subfolder
     Folder f("data");
     // filename to be written with correct folder path
-    std::string fout_1 = f.m_path + FN_OUT_1;
+    std::string fout_1 = f.m_path + "d12Scan_d3_" + ss_d3.str() + "_" + FN_OUT_1;
     std::ofstream out_1(fout_1.c_str(), std::ios_base::out);
 
     if (!out_1.is_open())
@@ -66,60 +75,60 @@ int main(int argc, char *argv[])
     {
         for (real_t d2 = 0.0; d2 <= D_MAX; d2 += D_STEP)
         {
-            for (real_t d3 = 0.0; d3 <= D_MAX; d3 += D_STEP)
+            sys1.m_coupling[0][1] = d1;
+            sys1.m_coupling[1][0] = d1;
+
+            sys1.m_coupling[2][1] = d2;
+            sys1.m_coupling[1][2] = d2;
+
+            sys1.m_coupling[3][1] = d3;
+            sys1.m_coupling[1][3] = d3;
+
+            // Initialize the state of the system
+            state_type x;
+            for (size_t i = 0; i < net1.m_networkSize * DIM_OSC; i++)
+                x[i] = dis(gen);
+
+            size_t steps1 = integrate_adaptive(make_dense_output(1.0e-06, 1.0e-06, runge_kutta_dopri5<state_type>()), sys1, x, 0.0, T_TRANS, 0.01);
+
+            for (size_t i = 0; i < x.size(); i++)
+                assert(isfinite(x[i]));
+
+            // time vector to sample data at specific points -- for observer
+            std::vector<real_t> times_it;
+            times_it.reserve(size_t(T_RUN));
+            for (size_t i = 0; i < size_t(T_RUN); i++)
+                times_it.push_back(1.0 * i);
+
+            std::vector<state_type> x_vec;
+            std::vector<real_t> times;
+            size_t steps2 = integrate_times(make_dense_output(1.0e-06, 1.0e-06, runge_kutta_dopri5<state_type>()), sys1, x,
+                                            times_it.begin(), times_it.end(), 0.01, push_back_state_and_time(x_vec, times));
+            // @@@@@@@@@@@@@  End of [ INTEGRATING the system] @@@@@@@@@@@@@@@@@@@@@@@@
+
+            // @@@@@@@@@@@@@  Start of [ generating SECONDARY DATA ] @@@@@@@@@@@@@@@@@@
+
+            // calculating phases and unwrapping them
+            arr2d phases(times.size(), net1.m_networkSize);
+            arr2d unwrapped_phases(times.size(), net1.m_networkSize);
+
+            calphase(x_vec, times, phases);
+            unwrap_phase(phases, unwrapped_phases);
+
+            std::vector<std::pair<real_t, real_t>> phasediff_stats;
+            size_t n_comb = size_t(0.5 * net1.m_networkSize * (net1.m_networkSize - 1));
+            phasediff_stats.reserve(n_comb);
+            ph_msd(unwrapped_phases, phasediff_stats);
+
+            // TODO: right now it is hard coded but it has to be flexible according to the resolution of the step size of parameter scan
+            out_1 << std::fixed << std::setprecision(4);
+
+            out_1 << d1 << "\t" << d2 << "\t" << d3;
+            for (size_t i = 0; i < phasediff_stats.size(); i++)
             {
-                sys1.m_coupling[0][1] = d1;
-                sys1.m_coupling[1][0] = d1;
-
-                sys1.m_coupling[2][1] = d2;
-                sys1.m_coupling[1][2] = d2;
-
-                sys1.m_coupling[3][1] = d3;
-                sys1.m_coupling[1][3] = d3;
-
-                // Initialize the state of the system
-                state_type x;
-                for (size_t i = 0; i < net1.m_networkSize * DIM_OSC; i++)
-                    x[i] = dis(gen);
-
-                size_t steps1 = integrate_adaptive(make_dense_output(1.0e-06, 1.0e-06, runge_kutta_dopri5<state_type>()), sys1, x, 0.0, T_TRANS, 0.01);
-
-                for (size_t i = 0; i < x.size(); i++)
-                    assert(isfinite(x[i]));
-
-                // time vector to sample data at specific points -- for observer
-                std::vector<real_t> times_it;
-                times_it.reserve(size_t(T_RUN));
-                for (size_t i = 0; i < size_t(T_RUN); i++)
-                    times_it.push_back(1.0 * i);
-
-                std::vector<state_type> x_vec;
-                std::vector<real_t> times;
-                size_t steps2 = integrate_times(make_dense_output(1.0e-06, 1.0e-06, runge_kutta_dopri5<state_type>()), sys1, x,
-                                                times_it.begin(), times_it.end(), 0.01, push_back_state_and_time(x_vec, times));
-                // @@@@@@@@@@@@@  End of [ INTEGRATING the system] @@@@@@@@@@@@@@@@@@@@@@@@
-
-                // @@@@@@@@@@@@@  Start of [ generating SECONDARY DATA ] @@@@@@@@@@@@@@@@@@
-
-                // calculating phases and unwrapping them
-                arr2d phases(times.size(), net1.m_networkSize);
-                arr2d unwrapped_phases(times.size(), net1.m_networkSize);
-
-                calphase(x_vec, times, phases);
-                unwrap_phase(phases, unwrapped_phases);
-
-                std::vector<std::pair<real_t, real_t>> phasediff_stats;
-                size_t n_comb = size_t(0.5 * net1.m_networkSize * (net1.m_networkSize - 1));
-                phasediff_stats.reserve(n_comb);
-                ph_msd(unwrapped_phases, phasediff_stats);
-
-                out_1 << d1 << "\t" << d2 << "\t" << d3;
-                for (size_t i = 0; i < phasediff_stats.size(); i++)
-                {
-                    out_1 << "\t" << phasediff_stats[i].first << "\t" << phasediff_stats[i].second;
-                }
-                out_1 << std::endl;
+                out_1 << "\t" << phasediff_stats[i].first << "\t" << phasediff_stats[i].second;
             }
+            out_1 << std::endl;
             //std::cout << " At d1 = " << d1 << ", d2 = " << d2 << "\n";
             // @@@@@@@@@@@@@  End of [ generating SECONDARY DATA ] @@@@@@@@@@@@@@@@@@@@@
         }
