@@ -8,9 +8,9 @@ External libraries required to compile the code:
 * [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
 ---
 
-Visual Phase Synchronization   |  Schematic
-:-----------------------------:|:-------------------------:
-![my_gif](out.gif)             |  <img src="WW_Schematic.png" alt="drawing" width="600" height="400"/>
+Visual Phase Synchronization                                                     |  Schematic
+:-------------------------------------------------------------------------------:|:-------------------------:
+<img src="out.gif" alt="drawing" width="600" height="400"/>             |  <img src="WW_Schematic.png" alt="drawing" width="600" height="400"/>
 
 
 
