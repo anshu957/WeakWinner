@@ -8,6 +8,10 @@ External libraries required to compile the code:
 * [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
 ---
 
-![my_gif](out.gif)
+Solarized dark             |  Solarized Ocean
+:-------------------------:|:-------------------------:
+![my_gif](out.gif)         |  <img src="WW_Schematic.png" alt="drawing" width="550" height="350"/>
 
-<img src="WW_Schematic.png" alt="drawing" width="550" height="350"/>
+
+
+
