@@ -8,9 +8,9 @@ External libraries required to compile the code:
 * [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
 ---
 
-Solarized dark             |  Solarized Ocean
-:-------------------------:|:-------------------------:
-![my_gif](out.gif)         |  <img src="WW_Schematic.png" alt="drawing" width="550" height="350"/>
+Visual Phase Synchronization   |  Schematic
+:-----------------------------:|:-------------------------:
+![my_gif](out.gif)             |  <img src="WW_Schematic.png" alt="drawing" width="600" height="400"/>
 
 
 
