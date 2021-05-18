@@ -4,7 +4,7 @@
 
 ---
 External libraries required to compile the code:
-* ![Boost](https://www.boost.org)
-* ![Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
+* [Boost](https://www.boost.org)
+* [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
 
 ![main schematic](WW_Schematic.png)
