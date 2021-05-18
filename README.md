@@ -8,4 +8,6 @@ External libraries required to compile the code:
 * [Eigen](https://eigen.tuxfamily.org/index.php?title=Main_Page)
 ---
 
-<img src="WW_Schematic.png" alt="drawing" width="750" height="550"/>
+![my_gif](out.gif)
+
+<img src="WW_Schematic.png" alt="drawing" width="550" height="350"/>
