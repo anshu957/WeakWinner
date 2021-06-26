@@ -1,6 +1,6 @@
 ## Weak-winner phase synchronization: A curious case of weak interactions
 ### This repository reproduces some of the results published in the following manuscript:
-* https://arxiv.org/abs/1812.02642
+* https://journals.aps.org/prresearch/abstract/10.1103/PhysRevResearch.3.023144
 
 ---
 External libraries required to compile the code:
